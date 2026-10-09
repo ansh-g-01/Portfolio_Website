@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useRef, useState, type MutableRefObject, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type MutableRefObject, type ReactNode } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
 import * as THREE from "three";
+import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeometry.js";
 
 // A stylized developer at a desk, built only from Three.js primitives.
 // The rig faces +z; everything is positioned in that local space.
@@ -152,11 +153,144 @@ function Chair() {
   );
 }
 
+// Small seeded random generator so the hair looks the same on every load
+function seededRandom(seed: number) {
+  return () => {
+    seed = (seed + 0x6d2b79f5) | 0;
+    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+// Head profile from chin (bottom) to crown, spun around the y axis.
+// It narrows toward the jaw so the face reads as a face, not a ball.
+const HEAD_PROFILE = new THREE.SplineCurve(
+  [
+    [0, 0],
+    [0.13, 0.01],
+    [0.22, 0.07],
+    [0.28, 0.16],
+    [0.315, 0.27],
+    [0.322, 0.36],
+    [0.305, 0.46],
+    [0.26, 0.54],
+    [0.17, 0.61],
+    [0, 0.64],
+  ].map(([x, y]) => new THREE.Vector2(x, y))
+).getPoints(40);
+
+const HAIR_CENTER = new THREE.Vector3(0, 0.335, -0.01);
+
+// Scatter hair clumps over the scalp: a high hairline at the front,
+// lower at the sides and lowest at the back
+function hairClumps(count: number) {
+  const random = seededRandom(7);
+  const golden = Math.PI * (3 - Math.sqrt(5));
+  const clumps: { position: THREE.Vector3; scale: number; rotation: THREE.Euler }[] = [];
+  for (let i = 0; i < count; i++) {
+    const y = 1 - (i / (count - 1)) * 2;
+    const r = Math.sqrt(1 - y * y);
+    const dir = new THREE.Vector3(Math.sin(golden * i) * r, y, Math.cos(golden * i) * r);
+    const polar = Math.acos(dir.y);
+    const around = Math.atan2(dir.x, dir.z); // 0 = facing forward
+    const hairline = Math.PI * (0.34 + 0.36 * ((1 - Math.cos(around)) / 2));
+    if (polar > hairline) continue;
+    clumps.push({
+      position: dir.multiplyScalar(0.32 + random() * 0.05).add(HAIR_CENTER),
+      scale: 0.05 + random() * 0.04,
+      rotation: new THREE.Euler(random() * 3, random() * 3, random() * 3),
+    });
+  }
+  return clumps;
+}
+
+function Head() {
+  const hair = useRef<THREE.InstancedMesh>(null!);
+  const clumps = useMemo(() => hairClumps(420), []);
+  const lens = useMemo(() => new RoundedBoxGeometry(0.18, 0.11, 0.025, 4, 0.03), []);
+
+  useLayoutEffect(() => {
+    const temp = new THREE.Object3D();
+    clumps.forEach((clump, i) => {
+      temp.position.copy(clump.position);
+      temp.rotation.copy(clump.rotation);
+      temp.scale.setScalar(clump.scale);
+      temp.updateMatrix();
+      hair.current.setMatrixAt(i, temp.matrix);
+    });
+    hair.current.instanceMatrix.needsUpdate = true;
+  }, [clumps]);
+
+  return (
+    <group>
+      <mesh>
+        <latheGeometry args={[HEAD_PROFILE, 40]} />
+        <meshStandardMaterial color={COLORS.skin} roughness={0.7} />
+      </mesh>
+      {/* Chin */}
+      <mesh position={[0, 0.075, 0.115]} scale={[1.25, 0.7, 0.9]}>
+        <sphereGeometry args={[0.1, 16, 16]} />
+        <meshStandardMaterial color={COLORS.skin} roughness={0.7} />
+      </mesh>
+      {[-1, 1].map((side) => (
+        <mesh key={side} position={[0.315 * side, 0.3, 0]} scale={[0.6, 1, 0.9]}>
+          <sphereGeometry args={[0.065, 12, 12]} />
+          <meshStandardMaterial color={COLORS.skin} roughness={0.7} />
+        </mesh>
+      ))}
+      <mesh position={[0, 0.24, 0.315]} scale={[0.9, 1.2, 1]}>
+        <sphereGeometry args={[0.045, 12, 12]} />
+        <meshStandardMaterial color="#d49a78" roughness={0.7} />
+      </mesh>
+      <mesh position={[0, 0.15, 0.27]} rotation={[0, 0, Math.PI]}>
+        <torusGeometry args={[0.055, 0.011, 8, 16, Math.PI]} />
+        <meshBasicMaterial color="#7a3e2e" />
+      </mesh>
+      {[-1, 1].map((side) => (
+        <Box
+          key={side}
+          size={[0.1, 0.022, 0.02]}
+          position={[0.11 * side, 0.425, 0.29]}
+          rotation={[0, 0, -0.1 * side]}
+          color={COLORS.hair}
+        />
+      ))}
+
+      {/* Shades: two lenses, a bridge, hinges angled along the head, and arms to the ears */}
+      <group position={[0, 0.33, 0]}>
+        {[-1, 1].map((side) => (
+          <group key={side}>
+            <mesh geometry={lens} position={[0.105 * side, 0, 0.315]} rotation={[0, 0.15 * side, 0]}>
+              <meshStandardMaterial color="#0c1416" metalness={0.5} roughness={0.12} />
+            </mesh>
+            <Box size={[0.174, 0.018, 0.015]} position={[0.257 * side, 0.015, 0.255]} rotation={[0, 0.68 * side, 0]} color="#111111" />
+            <Box size={[0.012, 0.018, 0.2]} position={[0.325 * side, 0.015, 0.1]} color="#111111" />
+          </group>
+        ))}
+        <Box size={[0.04, 0.018, 0.015]} position={[0, 0.015, 0.322]} color="#111111" />
+      </group>
+
+      {/* Hair: a solid base plus frizzy clumps on top */}
+      <mesh position={[0, 0.335, 0]}>
+        <sphereGeometry args={[0.33, 32, 16, 0, Math.PI * 2, 0, Math.PI * 0.36]} />
+        <meshStandardMaterial color={COLORS.hair} roughness={1} />
+      </mesh>
+      <mesh position={[0, 0.32, -0.07]} scale={[1, 0.95, 0.92]}>
+        <sphereGeometry args={[0.315, 24, 18]} />
+        <meshStandardMaterial color={COLORS.hair} roughness={1} />
+      </mesh>
+      <instancedMesh ref={hair} args={[undefined, undefined, clumps.length]}>
+        <icosahedronGeometry args={[1, 1]} />
+        <meshStandardMaterial color={COLORS.hair} roughness={1} flatShading />
+      </instancedMesh>
+    </group>
+  );
+}
+
 function Person({ animate, pointer, rigRotation }: { animate: boolean; pointer: Pointer; rigRotation: MutableRefObject<number> }) {
   const torso = useRef<THREE.Group>(null!);
   const head = useRef<THREE.Group>(null!);
-  const eyes = useRef<THREE.Group>(null!);
-  const blink = useRef({ next: 2, until: 0 });
 
   useFrame((state) => {
     const t = state.clock.elapsedTime;
@@ -167,12 +301,6 @@ function Person({ animate, pointer, rigRotation }: { animate: boolean; pointer: 
     const lookX = clamp(pointer.current.y * 0.3 + 0.05, -0.3, 0.4);
     head.current.rotation.y += (lookY - head.current.rotation.y) * 0.08;
     head.current.rotation.x += (lookX - head.current.rotation.x) * 0.08;
-
-    if (animate && t > blink.current.next) {
-      blink.current.until = t + 0.12;
-      blink.current.next = t + 2.5 + Math.random() * 3;
-    }
-    eyes.current.scale.y = t < blink.current.until ? 0.1 : 1;
   });
 
   return (
@@ -229,43 +357,7 @@ function Person({ animate, pointer, rigRotation }: { animate: boolean; pointer: 
 
         {/* Head pivots at the top of the neck */}
         <group ref={head} position={[0, 1.2, 0]}>
-          <mesh position={[0, 0.3, 0]}>
-            <sphereGeometry args={[0.34, 32, 24]} />
-            <meshStandardMaterial color={COLORS.skin} roughness={0.7} />
-          </mesh>
-          <mesh position={[0, 0.33, -0.02]}>
-            <sphereGeometry args={[0.36, 32, 16, 0, Math.PI * 2, 0, Math.PI * 0.38]} />
-            <meshStandardMaterial color={COLORS.hair} roughness={0.95} />
-          </mesh>
-          <mesh position={[0, 0.27, -0.08]} scale={[1, 0.92, 0.9]}>
-            <sphereGeometry args={[0.33, 24, 18]} />
-            <meshStandardMaterial color={COLORS.hair} roughness={0.95} />
-          </mesh>
-          {[-1, 1].map((side) => (
-            <mesh key={side} position={[0.34 * side, 0.28, 0]}>
-              <sphereGeometry args={[0.07, 12, 12]} />
-              <meshStandardMaterial color={COLORS.skin} roughness={0.7} />
-            </mesh>
-          ))}
-          <group ref={eyes} position={[0, 0.32, 0.31]}>
-            {[-1, 1].map((side) => (
-              <mesh key={side} position={[0.12 * side, 0, 0]}>
-                <sphereGeometry args={[0.04, 12, 12]} />
-                <meshBasicMaterial color="#111318" />
-              </mesh>
-            ))}
-          </group>
-          {[-1, 1].map((side) => (
-            <Box key={side} size={[0.11, 0.025, 0.02]} position={[0.12 * side, 0.43, 0.31]} color={COLORS.hair} />
-          ))}
-          <mesh position={[0, 0.25, 0.34]}>
-            <sphereGeometry args={[0.04, 12, 12]} />
-            <meshStandardMaterial color="#d49a78" roughness={0.7} />
-          </mesh>
-          <mesh position={[0, 0.17, 0.31]} rotation={[0, 0, Math.PI]}>
-            <torusGeometry args={[0.07, 0.012, 8, 16, Math.PI]} />
-            <meshBasicMaterial color="#7a3e2e" />
-          </mesh>
+          <Head />
         </group>
       </group>
     </group>
