@@ -96,6 +96,33 @@ p {
   color: var(--text);
 }
 
+/* Scroll line: drawn behind the page content */
+
+main {
+  position: relative;
+}
+
+.scroll-line {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.55;
+}
+
+.scroll-line-dot {
+  fill: #2dd4bf;
+  opacity: 0;
+  filter: drop-shadow(0 0 6px #2dd4bf);
+  transition: opacity 0.3s;
+}
+
+.section {
+  position: relative;
+  z-index: 1;
+}
+
 /* Hero */
 
 .hero {

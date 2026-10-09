@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { profile } from "./data";
 import Lenis from "lenis";
 import "lenis/dist/lenis.css";
+import ScrollLine from "./components/ScrollLine";
 import { About, Contact, Experience, Featured, Hero, Projects, Skills } from "./components/Sections";
 
 const navLinks = [
@@ -57,6 +58,7 @@ export default function App() {
         </nav>
       </header>
       <main>
+        <ScrollLine />
         <Hero />
         <About />
         <Featured />
