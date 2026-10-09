@@ -224,6 +224,28 @@ function Head() {
         <Box size={[0.04, 0.018, 0.015]} position={[0, 0.015, 0.322]} color="#111111" />
       </group>
 
+      {/* Headphones: a band arching over the hair to a cup on each ear */}
+      <mesh position={[0, 0.33, -0.02]}>
+        <torusGeometry args={[0.4, 0.025, 12, 48, Math.PI]} />
+        <meshStandardMaterial color="#1a1a1a" metalness={0.3} roughness={0.35} />
+      </mesh>
+      {[-1, 1].map((side) => (
+        <group key={side} position={[0.39 * side, 0.3, -0.02]}>
+          <mesh rotation={[0, 0, Math.PI / 2]}>
+            <cylinderGeometry args={[0.105, 0.105, 0.07, 28]} />
+            <meshStandardMaterial color="#1a1a1a" metalness={0.3} roughness={0.35} />
+          </mesh>
+          <mesh position={[-0.04 * side, 0, 0]} rotation={[0, Math.PI / 2, 0]}>
+            <torusGeometry args={[0.08, 0.028, 12, 28]} />
+            <meshStandardMaterial color="#2a2a2a" roughness={0.9} />
+          </mesh>
+          <mesh position={[0.037 * side, 0, 0]} rotation={[0, Math.PI / 2, 0]}>
+            <torusGeometry args={[0.065, 0.009, 8, 28]} />
+            <meshStandardMaterial color={COLORS.mug} metalness={0.4} roughness={0.3} />
+          </mesh>
+        </group>
+      ))}
+
       {/* Hair: a short classic cut. A slightly raised crown for volume, and a
           shell over the sides and back that stays open at the face */}
       <mesh position={HAIR_CENTER} rotation={[-0.06, 0, 0.14]} scale={[1.03, 1.1, 1.06]}>
