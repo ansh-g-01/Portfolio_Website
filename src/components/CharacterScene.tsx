@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type MutableRefObject, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type MutableRefObject, type ReactNode } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeometry.js";
@@ -8,7 +8,7 @@ import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeom
 
 const COLORS = {
   skin: "#e3b08d",
-  hair: "#1c1a1f",
+  hair: "#2b1d14",
   hoodie: "#14b8a6",
   hoodieDark: "#0f766e",
   pants: "#1f2937",
@@ -153,16 +153,6 @@ function Chair() {
   );
 }
 
-// Small seeded random generator so the hair looks the same on every load
-function seededRandom(seed: number) {
-  return () => {
-    seed = (seed + 0x6d2b79f5) | 0;
-    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
-
 // Head profile from chin (bottom) to crown, spun around the y axis.
 // It narrows toward the jaw so the face reads as a face, not a ball.
 const HEAD_PROFILE = new THREE.SplineCurve(
@@ -182,45 +172,8 @@ const HEAD_PROFILE = new THREE.SplineCurve(
 
 const HAIR_CENTER = new THREE.Vector3(0, 0.335, -0.01);
 
-// Scatter hair clumps over the scalp: a high hairline at the front,
-// lower at the sides and lowest at the back
-function hairClumps(count: number) {
-  const random = seededRandom(7);
-  const golden = Math.PI * (3 - Math.sqrt(5));
-  const clumps: { position: THREE.Vector3; scale: number; rotation: THREE.Euler }[] = [];
-  for (let i = 0; i < count; i++) {
-    const y = 1 - (i / (count - 1)) * 2;
-    const r = Math.sqrt(1 - y * y);
-    const dir = new THREE.Vector3(Math.sin(golden * i) * r, y, Math.cos(golden * i) * r);
-    const polar = Math.acos(dir.y);
-    const around = Math.atan2(dir.x, dir.z); // 0 = facing forward
-    const hairline = Math.PI * (0.34 + 0.36 * ((1 - Math.cos(around)) / 2));
-    if (polar > hairline) continue;
-    clumps.push({
-      position: dir.multiplyScalar(0.32 + random() * 0.05).add(HAIR_CENTER),
-      scale: 0.05 + random() * 0.04,
-      rotation: new THREE.Euler(random() * 3, random() * 3, random() * 3),
-    });
-  }
-  return clumps;
-}
-
 function Head() {
-  const hair = useRef<THREE.InstancedMesh>(null!);
-  const clumps = useMemo(() => hairClumps(420), []);
   const lens = useMemo(() => new RoundedBoxGeometry(0.18, 0.11, 0.025, 4, 0.03), []);
-
-  useLayoutEffect(() => {
-    const temp = new THREE.Object3D();
-    clumps.forEach((clump, i) => {
-      temp.position.copy(clump.position);
-      temp.rotation.copy(clump.rotation);
-      temp.scale.setScalar(clump.scale);
-      temp.updateMatrix();
-      hair.current.setMatrixAt(i, temp.matrix);
-    });
-    hair.current.instanceMatrix.needsUpdate = true;
-  }, [clumps]);
 
   return (
     <group>
@@ -271,19 +224,20 @@ function Head() {
         <Box size={[0.04, 0.018, 0.015]} position={[0, 0.015, 0.322]} color="#111111" />
       </group>
 
-      {/* Hair: a solid base plus frizzy clumps on top */}
-      <mesh position={[0, 0.335, 0]}>
-        <sphereGeometry args={[0.33, 32, 16, 0, Math.PI * 2, 0, Math.PI * 0.36]} />
-        <meshStandardMaterial color={COLORS.hair} roughness={1} />
+      {/* Hair: a short classic cut. A slightly raised crown for volume, and a
+          shell over the sides and back that stays open at the face */}
+      <mesh position={HAIR_CENTER} rotation={[-0.06, 0, 0.14]} scale={[1.03, 1.1, 1.06]}>
+        <sphereGeometry args={[0.34, 64, 32, 0, Math.PI * 2, 0, Math.PI * 0.37]} />
+        <meshStandardMaterial color={COLORS.hair} roughness={0.75} />
       </mesh>
-      <mesh position={[0, 0.32, -0.07]} scale={[1, 0.95, 0.92]}>
-        <sphereGeometry args={[0.315, 24, 18]} />
-        <meshStandardMaterial color={COLORS.hair} roughness={1} />
+      <mesh position={HAIR_CENTER}>
+        <sphereGeometry args={[0.338, 64, 32, Math.PI / 2 + 0.85, Math.PI * 2 - 1.7, 0, Math.PI * 0.56]} />
+        <meshStandardMaterial color={COLORS.hair} roughness={0.75} />
       </mesh>
-      <instancedMesh ref={hair} args={[undefined, undefined, clumps.length]}>
-        <icosahedronGeometry args={[1, 1]} />
-        <meshStandardMaterial color={COLORS.hair} roughness={1} flatShading />
-      </instancedMesh>
+      <mesh position={[0, 0.3, -0.07]} scale={[1, 0.95, 0.92]}>
+        <sphereGeometry args={[0.31, 24, 18]} />
+        <meshStandardMaterial color={COLORS.hair} roughness={0.75} />
+      </mesh>
     </group>
   );
 }
