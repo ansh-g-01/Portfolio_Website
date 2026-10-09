@@ -70,6 +70,8 @@ export default function ScrollLine() {
       dot.current!.setAttribute("cx", String(tip.x));
       dot.current!.setAttribute("cy", String(tip.y));
       dot.current!.style.opacity = tip.length > 0 && !showAll ? "1" : "0";
+      // Fade the whole line out as the page bottom is reached
+      svg.current!.style.opacity = showAll ? "" : String(0.55 * (1 - nearEnd));
     };
     const onScroll = () => {
       if (!frame) frame = requestAnimationFrame(update);
