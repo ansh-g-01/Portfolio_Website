@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useRef } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 
@@ -129,18 +129,31 @@ function Gateway({ animate }: { animate: boolean }) {
 }
 
 export default function GatewayScene() {
+  const wrapper = useRef<HTMLDivElement>(null);
+  const [visible, setVisible] = useState(false);
   const reducedMotion = useMemo(
     () => window.matchMedia("(prefers-reduced-motion: reduce)").matches,
     []
   );
+
+  // Only render frames while the scene is on screen
+  useEffect(() => {
+    const observer = new IntersectionObserver(([entry]) => setVisible(entry.isIntersecting));
+    observer.observe(wrapper.current!);
+    return () => observer.disconnect();
+  }, []);
+
   return (
-    <Canvas
-      camera={{ position: [0, 0, 8.5], fov: 45 }}
-      dpr={[1, 2]}
-      gl={{ antialias: true, alpha: true }}
-      aria-hidden="true"
-    >
-      <Gateway animate={!reducedMotion} />
-    </Canvas>
+    <div ref={wrapper} style={{ height: "100%" }}>
+      <Canvas
+        frameloop={visible ? "always" : "never"}
+        camera={{ position: [0, 0, 8.5], fov: 45 }}
+        dpr={[1, 2]}
+        gl={{ antialias: true, alpha: true }}
+        aria-hidden="true"
+      >
+        <Gateway animate={!reducedMotion} />
+      </Canvas>
+    </div>
   );
 }

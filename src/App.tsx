@@ -1,9 +1,12 @@
 import { useEffect } from "react";
 import { profile } from "./data";
-import { About, Contact, Experience, Hero, Projects, Skills } from "./components/Sections";
+import Lenis from "lenis";
+import "lenis/dist/lenis.css";
+import { About, Contact, Experience, Featured, Hero, Projects, Skills } from "./components/Sections";
 
 const navLinks = [
   { href: "#about", label: "About" },
+  { href: "#featured", label: "Featured" },
   { href: "#experience", label: "Experience" },
   { href: "#projects", label: "Projects" },
   { href: "#contact", label: "Contact" },
@@ -27,7 +30,17 @@ function useReveal() {
   }, []);
 }
 
+// Smooth scrolling for wheel and anchor links, skipped for reduced motion
+function useSmoothScroll() {
+  useEffect(() => {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const lenis = new Lenis({ autoRaf: true, anchors: { offset: -72 } });
+    return () => lenis.destroy();
+  }, []);
+}
+
 export default function App() {
+  useSmoothScroll();
   useReveal();
   return (
     <>
@@ -46,6 +59,7 @@ export default function App() {
       <main>
         <Hero />
         <About />
+        <Featured />
         <Experience />
         <Projects />
         <Skills />

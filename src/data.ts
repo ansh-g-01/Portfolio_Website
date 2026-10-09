@@ -12,11 +12,19 @@ export const profile = {
     "I work on AI platform infrastructure and agentic systems: the plumbing that lets teams use large language models safely and at scale.",
 };
 
+export const featured = {
+  name: "AI Gateway at Bajaj",
+  description:
+    "I upgraded and extended the company's AI gateway, built on LiteLLM: one OpenAI-compatible API in front of 2,000+ models from 100+ providers, with role-based access control, batch processing and realtime voice on top. I moved all traffic to the new version with zero downtime.",
+  stack: ["Python", "FastAPI", "LiteLLM", "Azure AD SSO", "ArgoCD"],
+};
+
 // Gateway figures as of the last 30 days, from the verified profile
 export const gatewayStats = [
   { value: "2,000+", label: "models behind one API" },
   { value: "100+", label: "model providers" },
   { value: "8.5M+", label: "requests in 30 days" },
+  { value: "$25K+", label: "model spend tracked in 30 days" },
 ];
 
 export const about = [

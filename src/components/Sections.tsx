@@ -3,6 +3,7 @@ import {
   about,
   education,
   experience,
+  featured,
   gatewayStats,
   leadership,
   profile,
@@ -11,6 +12,7 @@ import {
 } from "../data";
 
 // Loaded separately so the text renders before Three.js downloads
+const CharacterScene = lazy(() => import("./CharacterScene"));
 const GatewayScene = lazy(() => import("./GatewayScene"));
 
 export function Hero() {
@@ -30,27 +32,10 @@ export function Hero() {
             See my work
           </a>
         </div>
-        <dl className="stats">
-          {gatewayStats.map((stat) => (
-            <div key={stat.label}>
-              <dt>{stat.value}</dt>
-              <dd>{stat.label}</dd>
-            </div>
-          ))}
-        </dl>
       </div>
-      <figure className="hero-scene">
-        <div className="scene-canvas">
-          <Suspense fallback={null}>
-            <GatewayScene />
-          </Suspense>
-        </div>
-        <figcaption>
-          <span className="dot request" /> requests
-          <span className="dot response" /> responses
-          <span className="caption-note">illustration of the AI gateway</span>
-        </figcaption>
-      </figure>
+      <Suspense fallback={null}>
+        <CharacterScene />
+      </Suspense>
     </section>
   );
 }
@@ -93,10 +78,49 @@ export function About() {
   );
 }
 
+export function Featured() {
+  return (
+    <section id="featured" className="section reveal">
+      <SectionTitle index="02">Featured</SectionTitle>
+      <div className="featured-grid">
+        <div>
+          <h3 className="featured-name">{featured.name}</h3>
+          <p className="featured-text">{featured.description}</p>
+          <dl className="stats">
+            {gatewayStats.map((stat) => (
+              <div key={stat.label}>
+                <dt>{stat.value}</dt>
+                <dd>{stat.label}</dd>
+              </div>
+            ))}
+          </dl>
+          <ul className="tags">
+            {featured.stack.map((tool) => (
+              <li key={tool}>{tool}</li>
+            ))}
+          </ul>
+        </div>
+        <figure className="gateway-figure">
+          <div className="scene-canvas">
+            <Suspense fallback={null}>
+              <GatewayScene />
+            </Suspense>
+          </div>
+          <figcaption>
+            <span className="dot request" /> requests
+            <span className="dot response" /> responses
+            <span className="caption-note">illustration of the AI gateway</span>
+          </figcaption>
+        </figure>
+      </div>
+    </section>
+  );
+}
+
 export function Experience() {
   return (
     <section id="experience" className="section reveal">
-      <SectionTitle index="02">Experience</SectionTitle>
+      <SectionTitle index="03">Experience</SectionTitle>
       <ol className="timeline">
         {experience.map((job) => (
           <li key={job.company} className="job">
@@ -123,7 +147,7 @@ export function Experience() {
 export function Projects() {
   return (
     <section id="projects" className="section reveal">
-      <SectionTitle index="03">Projects</SectionTitle>
+      <SectionTitle index="04">Projects</SectionTitle>
       <div className="project-grid">
         {projects.map((project) => (
           <article key={project.name} className="card project">
@@ -147,7 +171,7 @@ export function Projects() {
 export function Skills() {
   return (
     <section id="skills" className="section reveal">
-      <SectionTitle index="04">Skills</SectionTitle>
+      <SectionTitle index="05">Skills</SectionTitle>
       <div className="skills-grid">
         {skills.map((group) => (
           <div key={group.group}>
@@ -167,7 +191,7 @@ export function Skills() {
 export function Contact() {
   return (
     <section id="contact" className="section contact reveal">
-      <SectionTitle index="05">Contact</SectionTitle>
+      <SectionTitle index="06">Contact</SectionTitle>
       <p className="contact-lead">
         Working on AI agents or LLM infrastructure? I'd like to hear about it.
       </p>
