@@ -20,7 +20,7 @@ export function Hero() {
     <section className="hero" id="top">
       <div className="hero-text">
         <p className="eyebrow">
-          {profile.role} · {profile.company}
+          {profile.role}
         </p>
         <h1>{profile.name}</h1>
         <p className="lead">{profile.tagline}</p>
