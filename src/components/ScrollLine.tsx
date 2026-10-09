@@ -2,10 +2,18 @@ import { useEffect, useRef, useState } from "react";
 
 // A wavy line that draws itself down the page as you scroll, with a dot at its tip.
 // It sits behind the content of <main> and spans from About to the end.
+// It only shows while you scroll: faint for a nudge, strong for a fast scroll,
+// and it fades away when scrolling stops so it never sits over text you're reading.
 
 const SEGMENT_HEIGHT = 650;
 // Where each bend lands, as a fraction of the page width
 const BENDS = [0.12, 0.88, 0.18, 0.82, 0.1, 0.9, 0.2, 0.8];
+// Peak opacity of the line at full scroll strength
+const MAX_OPACITY = 0.7;
+// How quickly the scroll energy dies away once scrolling stops (ms)
+const FADE_TIME = 350;
+// Pixels of recent scrolling that bring the line to about two-thirds strength
+const STRENGTH_SCALE = 450;
 
 export default function ScrollLine() {
   const svg = useRef<SVGSVGElement>(null);
@@ -56,6 +64,23 @@ export default function ScrollLine() {
     line.style.strokeDasharray = String(total);
 
     let frame = 0;
+    // Recent scroll distance, decaying over time; drives how visible the line is
+    let energy = 0;
+    let lastY = window.scrollY;
+    let lastTime = performance.now();
+    let endFade = 0;
+
+    const fade = (now: number) => {
+      frame = 0;
+      energy *= Math.exp(-(now - lastTime) / FADE_TIME);
+      lastTime = now;
+      if (energy < 1) energy = 0;
+      const strength = 1 - Math.exp(-energy / STRENGTH_SCALE);
+      // Also fade the whole line out as the page bottom is reached
+      svg.current!.style.opacity = String(MAX_OPACITY * strength * (1 - endFade));
+      if (energy > 0) frame = requestAnimationFrame(fade);
+    };
+
     const update = () => {
       frame = 0;
       const top = svg.current!.getBoundingClientRect().top + window.scrollY;
@@ -63,6 +88,8 @@ export default function ScrollLine() {
       // is complete when the page bottom is reached
       const remaining = document.documentElement.scrollHeight - (window.scrollY + window.innerHeight);
       const nearEnd = 1 - Math.min(1, Math.max(0, remaining / window.innerHeight));
+      // The fade-out runs a little ahead of that, finishing a quarter screen before the bottom
+      endFade = 1 - Math.min(1, Math.max(0, (remaining - window.innerHeight * 0.25) / window.innerHeight));
       const target = window.scrollY + window.innerHeight * (0.6 + 0.4 * nearEnd) - top;
       const index = samples.findIndex((s) => s.y > target);
       const tip = showAll || index === -1 ? samples[samples.length - 1] : samples[Math.max(0, index - 1)];
@@ -70,20 +97,31 @@ export default function ScrollLine() {
       dot.current!.setAttribute("cx", String(tip.x));
       dot.current!.setAttribute("cy", String(tip.y));
       dot.current!.style.opacity = tip.length > 0 && !showAll ? "1" : "0";
-      // Fade the whole line out as the page bottom is reached
-      svg.current!.style.opacity = showAll ? "" : String(0.55 * (1 - nearEnd));
     };
     const onScroll = () => {
-      if (!frame) frame = requestAnimationFrame(update);
+      update();
+      if (showAll) return;
+      energy += Math.abs(window.scrollY - lastY);
+      lastY = window.scrollY;
+      if (!frame) {
+        lastTime = performance.now();
+        frame = requestAnimationFrame(fade);
+      }
+    };
+    const onResize = () => {
+      lastY = window.scrollY;
+      update();
     };
 
     update();
+    // With reduced motion the full line stays put at a steady opacity
+    svg.current!.style.opacity = showAll ? String(MAX_OPACITY * 0.6) : "0";
     window.addEventListener("scroll", onScroll, { passive: true });
-    window.addEventListener("resize", onScroll);
+    window.addEventListener("resize", onResize);
     return () => {
       cancelAnimationFrame(frame);
       window.removeEventListener("scroll", onScroll);
-      window.removeEventListener("resize", onScroll);
+      window.removeEventListener("resize", onResize);
     };
   }, [shape]);
 

@@ -31,6 +31,9 @@ export function Hero() {
           <a className="button" href="#experience">
             See my work
           </a>
+          <a className="button" href={profile.resume} download>
+            Download resume
+          </a>
         </div>
       </div>
       <Suspense fallback={null}>
@@ -204,6 +207,9 @@ export function Contact() {
         </a>
         <a href={profile.github} target="_blank" rel="noreferrer">
           GitHub
+        </a>
+        <a href={profile.resume} download>
+          Resume
         </a>
         <span className="muted">{profile.location}</span>
       </div>
